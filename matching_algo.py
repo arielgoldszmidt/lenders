@@ -1,20 +1,24 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 
-#generating random utilities normalized to the unit inverval
-A = np.random.uniform(low = 0.0, high = 1.0, size = 1*(10**6))
-B = np.random.uniform(low = 0.0, high = 1.0, size = 1*(10**6))
-C = np.random.uniform(low = 0.0, high = 1.0, size = 1*(10**6))
-D = np.random.uniform(low = 0.0, high = 1.0, size = 1*(10**6))
-E = np.random.uniform(low = 0.0, high = 1.0, size = 1*(10**6))
-F = np.random.uniform(low = 0.0, high = 1.0, size = 1*(10**6))
-G = np.random.uniform(low = 0.0, high = 1.0, size = 1*(10**6))
+#create dataframe of random preferences based on parameters
+np.random.seed(0)
+N = 1*(10**6)
+id = list(range(N))
+risk_score = np.random.uniform(0,1, N)
+char = np.random.uniform(0,1, N)
+error = np.random.normal(size = 7)
+alpha = np.random.uniform(0,1, size = 7)
+gamma = np.random.uniform(0,1, size = 7)
+util = []
 
-grades = {'A':A,'B':B,'C':C,'D':D,'E':E,'F':F,'G':G}
+for i in range(7):
+    util.append(alpha[i]*risk_score+gamma[i]*char + error[i])
 
-data = pd.DataFrame(grades)
+data = pd.DataFrame({'A':util[0],'B':util[1],'C':util[2],'D':util[3],
+    'E':util[4], 'F':util[5],'G':util[6]})
 
-data['member_id'] = list(range(1*(10**6)))
+data['member_id'] = list(range(N))
 
 capacities = pd.DataFrame()
 capacities['A'] = [125000]
@@ -36,3 +40,9 @@ def matching_algorithm(data, capacities):
         df[grade] = temp + na
         data = data[int(capacities[grade]):]
     return(df)
+
+final_matching = matching_algorithm(data, capacities)
+
+
+
+#LogisticRegression(multi_class='multinomial',solver ='newton-cg').fit(dff[['a','b']], util[0]).summary()
