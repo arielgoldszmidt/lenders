@@ -22,23 +22,13 @@ frame['int_rate_num'] = frame['int_rate'].str.rstrip('%').astype('float') / 100.
 
 # Cast emp_length to int
 def emp_length_to_int(s):
-    return max([int(n) for n in str(s).split() if n.isdigit()] + [0])
+    return max([int(n) for n in str(s).replace('+','').split() if n.isdigit()] + [0])
 frame['emp_length_num'] = frame['emp_length'].apply(emp_length_to_int)
 
-# Add late and default dummies
-is_late_16_30 = lambda s: int(s == "Late (16-30 days)")
-is_late_31_120 = lambda s: int(s == "Late (31-120 days)")
-is_default = lambda s: int(s == "Default")
+# Add default dummies
 is_bad = lambda s: int(s == "Default" or s == 'Does not meet the credit policy. Status:Charged Off' or s == "Charged Off")
 
-frame['late_16_30'] = frame.loan_status.apply(is_late_16_30)
-frame['late_31_120'] = frame.loan_status.apply(is_late_31_120)
-frame['default'] = frame.loan_status.apply(is_default)
 frame['bad'] = frame.loan_status.apply(is_bad)
-
-# Add interest-to-total-received and late-fees-to-total-received ratios
-frame['int_to_total'] = frame['total_rec_int'] / frame['total_pymnt']
-frame['late_fees_to_total'] = frame['total_rec_late_fee'] / frame['total_pymnt']
 
 # Add length in years
 frame["term_years"] = frame.term.str.rstrip(" months").astype("float") / 12
@@ -54,7 +44,7 @@ frame['issued_year'] = frame.issue_d.apply(lambda s: str(s)[-4:])
 # Construct data frame of just pre-application characteristics
 frame_completed = frame[frame.loan_status != 'Current']
 
-post_variables = ["all_util", "term",
+post_variables = ["all_util", "term", "recoveries",
                 "collection_recovery_fee", 
                 "funded_amnt", "funded_amnt_inv", "id", "initial_list_status",
                 "installment", "int_rate", "issue_d", "last_credit_pull_d", 
@@ -74,19 +64,18 @@ post_variables = ["all_util", "term",
 post_variables = list(set(post_variables).intersection(frame.columns))
 
 pre_data = frame_completed.drop(post_variables, axis=1)
-pre_data_dummies = pd.get_dummies(pre_data)
+# pre_data_dummies = pd.get_dummies(pre_data, drop_first=True)
 
 # Drop nas
-pre_data_dummies_no_na = pre_data_dummies[pre_data_dummies.columns[pre_data_dummies.isnull().sum() < 200]].dropna()
+pre_data_no_na = pre_data[pre_data.columns[pre_data.isnull().sum() < 200]].dropna()
 
 
 # Split data into traning and test
 from sklearn.model_selection import train_test_split
 
-regressands = ['bad', 'return', 'return2', 'recoveries', 
-               "grade_A", "grade_B", "grade_C", "grade_D", "grade_E", "grade_F", "grade_G"]
-features = pre_data_dummies_no_na.drop(regressands, axis=1)
-labels = pre_data_dummies_no_na[regressands]
+regressands = ['bad', 'return', 'return2', 'grade']
+features = pd.get_dummies(pre_data_no_na.drop(regressands, axis=1), drop_first=True)
+labels = pd.get_dummies(pre_data_no_na[regressands])
 _train_features, _test_features, _train_labels, _test_labels = train_test_split(features, labels, test_size = 0.5, 
                                                                             random_state = 42)
 train_features, test_features, train_labels, test_labels = _train_features.copy(), _test_features.copy(), _train_labels.copy(), _test_labels.copy()
